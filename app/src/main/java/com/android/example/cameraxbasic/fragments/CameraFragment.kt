@@ -47,9 +47,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.Navigation
 import androidx.window.WindowManager
-import com.android.example.cameraxbasic.KEY_EVENT_ACTION
-import com.android.example.cameraxbasic.KEY_EVENT_EXTRA
-import com.android.example.cameraxbasic.MainActivity
+import com.android.example.cameraxbasic.*
 import com.android.example.cameraxbasic.R
 import com.android.example.cameraxbasic.databinding.CameraUiContainerBinding
 import com.android.example.cameraxbasic.databinding.FragmentCameraBinding
@@ -279,7 +277,9 @@ class CameraFragment : Fragment() {
                 ?: throw IllegalStateException("Camera initialization failed.")
 
         // CameraSelector
-        val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
+        //val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
+        var mCameraId = 1
+        val cameraSelector = CameraSelector.Builder().addCameraFilter(MyCameraFilter("$mCameraId")).build()
 
         // Preview
         preview = Preview.Builder()
