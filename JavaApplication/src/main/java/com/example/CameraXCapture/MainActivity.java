@@ -49,6 +49,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+
+    private static final String TAG = "myt";
     //CameraX
     ImageCapture imageCapture;
     ImageAnalysis imageAnalysis;
@@ -56,6 +58,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     Preview preview;
     CameraSelector cameraSelector;
 
+    private ImageAnalysis mImageAnalysis;
     //UI
     private PreviewView previewView;
     private ImageView ivPreviewPhoto;
@@ -70,7 +73,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     // path should start with '/'
     // or it will be '/storage/emulated/0CameraTester'
     private final String ROOT_FOLDER_NAME = "/CameraTester";
-    private final String FILE_PATH = Environment.getExternalStorageDirectory() + ROOT_FOLDER_NAME + "/temp";
+    private String FILE_PATH;
     private int rotateDegree = 0;
     public final ExecutorService service = Executors.newSingleThreadExecutor();
 
@@ -78,6 +81,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        FILE_PATH = getExternalCacheDir() + ROOT_FOLDER_NAME + "/temp.jpg";
+
         bindUI();
         setListener();
 
@@ -105,12 +110,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View v) {
         if (v.getId() == R.id.ivPhotoShot) {
             //on shot
-            takePhoto(imageCapture);
+            /*takePhoto(imageCapture);
             showCapture();
             previewView.setVisibility(View.INVISIBLE);
             ivPhotoShot.setVisibility(View.INVISIBLE);
             llShotResult.setVisibility(View.VISIBLE);
-            ivPreviewPhoto.setVisibility(View.VISIBLE);
+            ivPreviewPhoto.setVisibility(View.VISIBLE);*/
+            captureOne();
         } else if (v.getId() == R.id.ivPhotoCancel) {
             //on cancel
             cameraProvider.unbind(imageAnalysis);
@@ -176,6 +182,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
                 imageCapture = new ImageCapture.Builder().build();
 
+                initAnalysis();
+
                 //for rotation
                 OrientationEventListener orientationEventListener = new OrientationEventListener(this) {
                     @Override
@@ -208,7 +216,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 //init service
                 cameraProvider.unbindAll();
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, mImageAnalysis);
             } catch (ExecutionException | InterruptedException e) {
                 e.printStackTrace();
             }
@@ -217,12 +225,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void takePhoto(ImageCapture imageCapture) {
         String FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS";
-        File photoFile = new File(FILE_PATH, new SimpleDateFormat(FILENAME_FORMAT, Locale.TAIWAN).format(System.currentTimeMillis()) + ".jpg");
+        File photoFile = new File(FILE_PATH); // new SimpleDateFormat(FILENAME_FORMAT, Locale.TAIWAN).format(System.currentTimeMillis()) + ".jpg"
+        Log.i(TAG, "takePhoto photoFile.getAbsolutePath(): " + photoFile.getAbsolutePath());
         ImageCapture.OutputFileOptions outputOptions = new ImageCapture.OutputFileOptions.Builder(photoFile).build();
         imageCapture.takePicture(outputOptions, ContextCompat.getMainExecutor(this), new ImageCapture.OnImageSavedCallback() {
             @Override
             public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
+                Log.i(TAG, "takePhoto onImageSaved photoFile.getAbsolutePath(): " + photoFile.getAbsolutePath());
                 service.submit(() -> {
+                    Log.i(TAG, "takePhoto onImageSaved submit");
                     processPhoto();
                 });
                 Uri savedUri = Uri.fromFile(photoFile);
@@ -233,8 +244,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void onError(@NonNull ImageCaptureException exception) {
                 exception.printStackTrace();
+                Log.i(TAG, "takePhoto onError exception: " + exception.getLocalizedMessage());
             }
         });
+        //cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
     }
 
     private void showCapture() {
@@ -244,12 +257,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 .build();
 
         imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this), image -> {
+            Log.i(TAG, "showCapture setAnalyzer");
             //Two choice:
             //1.Use imageAnalysis, but it will capture preview after shot(won't be same frame)
             //2.Use open file method, preview will be same but takes time.
             ivPreviewPhoto.setImageBitmap(toBitmap(image));
         });
         cameraProvider.bindToLifecycle(this, cameraSelector, imageAnalysis, preview);
+    }
+
+
+    private boolean mTakeOneYuv = false;
+    private void captureOne() {
+        mTakeOneYuv = true;
+    }
+    private void initAnalysis() {
+        mImageAnalysis =
+                new ImageAnalysis.Builder()
+                        //.setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                        .setTargetResolution(new Size(720, 1280)) // 图片的建议尺寸
+                        //.setOutputImageRotationEnabled(true) // 是否旋转分析器中得到的图片
+                        .setTargetRotation(Surface.ROTATION_0) // 允许旋转后 得到图片的旋转设置
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build();
+
+        mImageAnalysis.setAnalyzer(service, imageProxy -> {
+            Log.v(TAG, "setAnalyzer");
+            // 下面处理数据
+            if (mTakeOneYuv) {
+                mTakeOneYuv = false;
+                Log.d(TAG, "旋转角度: " + imageProxy.getImageInfo().getRotationDegrees());
+                ImgHelper.useYuvImgSaveFile(this, imageProxy,  true); // 存储这一帧为文件
+                runOnUiThread(() -> Toast.makeText(getApplicationContext(), "截取一帧", Toast.LENGTH_SHORT).show());
+            }
+            imageProxy.close(); // 最后要关闭这个
+        });
     }
 
 
