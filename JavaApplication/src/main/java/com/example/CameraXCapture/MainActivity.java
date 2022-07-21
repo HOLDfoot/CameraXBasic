@@ -117,6 +117,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             llShotResult.setVisibility(View.VISIBLE);
             ivPreviewPhoto.setVisibility(View.VISIBLE);*/
             captureOne();
+            //takePhoto(imageCapture);
         } else if (v.getId() == R.id.ivPhotoCancel) {
             //on cancel
             cameraProvider.unbind(imageAnalysis);
@@ -223,6 +224,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }, ContextCompat.getMainExecutor(this));
     }
 
+    /** 有问题， 如果早点bind会出现没有存储权限的信息 */
     private void takePhoto(ImageCapture imageCapture) {
         String FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS";
         File photoFile = new File(FILE_PATH); // new SimpleDateFormat(FILENAME_FORMAT, Locale.TAIWAN).format(System.currentTimeMillis()) + ".jpg"
@@ -247,7 +249,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Log.i(TAG, "takePhoto onError exception: " + exception.getLocalizedMessage());
             }
         });
-        //cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
+        cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
     }
 
     private void showCapture() {
