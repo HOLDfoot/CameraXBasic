@@ -117,7 +117,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             llShotResult.setVisibility(View.VISIBLE);
             ivPreviewPhoto.setVisibility(View.VISIBLE);*/
             captureOne();
-            //takePhoto(imageCapture);
+            takePhoto(imageCapture);
         } else if (v.getId() == R.id.ivPhotoCancel) {
             //on cancel
             cameraProvider.unbind(imageAnalysis);
@@ -167,9 +167,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 pass = false;
             }
         }
-        if (checkFolder()) {
+/*        if (checkFolder()) {
             Log.d("???", "Folder existed or unable to create.");
-        }
+        }*/
         return pass;
     }
 
@@ -217,7 +217,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 //init service
                 cameraProvider.unbindAll();
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, mImageAnalysis);
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, mImageAnalysis, imageCapture);
+                //cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
             } catch (ExecutionException | InterruptedException e) {
                 e.printStackTrace();
             }
@@ -228,6 +229,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void takePhoto(ImageCapture imageCapture) {
         String FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS";
         File photoFile = new File(FILE_PATH); // new SimpleDateFormat(FILENAME_FORMAT, Locale.TAIWAN).format(System.currentTimeMillis()) + ".jpg"
+        if (!photoFile.getParentFile().exists()) {
+            photoFile.getParentFile().mkdirs();
+        }
         Log.i(TAG, "takePhoto photoFile.getAbsolutePath(): " + photoFile.getAbsolutePath());
         ImageCapture.OutputFileOptions outputOptions = new ImageCapture.OutputFileOptions.Builder(photoFile).build();
         imageCapture.takePicture(outputOptions, ContextCompat.getMainExecutor(this), new ImageCapture.OnImageSavedCallback() {
@@ -249,7 +253,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Log.i(TAG, "takePhoto onError exception: " + exception.getLocalizedMessage());
             }
         });
-        cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
+        //cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
     }
 
     private void showCapture() {
