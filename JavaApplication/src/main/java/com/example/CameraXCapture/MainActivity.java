@@ -24,6 +24,9 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.camera.camera2.interop.Camera2CameraFilter;
+import androidx.camera.core.Camera;
+import androidx.camera.core.CameraFilter;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageCapture;
@@ -43,6 +46,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -173,6 +178,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return pass;
     }
 
+    @SuppressLint("UnsafeExperimentalUsageError")
+    class MyCameraFilter implements CameraFilter {
+
+        @SuppressLint("RestrictedApi")
+        @NonNull
+        @Override
+        public LinkedHashSet<Camera> filter(@NonNull LinkedHashSet<Camera> cameras) {
+            Log.i(TAG, "cameras size: " + cameras.size());
+            Iterator<Camera> cameraIterator = cameras.iterator();
+            Camera camera = null;
+            while (cameraIterator.hasNext()) {
+                camera = cameraIterator.next();
+                String getImplementationType = camera.getCameraInfo().getImplementationType();
+                Log.i(TAG, "getImplementationType: " + getImplementationType);
+            }
+            LinkedHashSet linkedHashSet = new LinkedHashSet<>();
+            linkedHashSet.add(camera); // 最后一个camera
+            return linkedHashSet;
+        }
+    }
+
+    @SuppressLint("UnsafeExperimentalUsageError")
     private void startCamera() {
         ListenableFuture<ProcessCameraProvider> cameraProviderListenableFuture = ProcessCameraProvider.getInstance(this);
         cameraProviderListenableFuture.addListener(() -> {
@@ -181,6 +208,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 preview = new Preview.Builder().build();
                 preview.setSurfaceProvider(previewView.createSurfaceProvider());
                 cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
+                cameraSelector = new CameraSelector.Builder().addCameraFilter(new MyCameraFilter()).build();
+
+
                 imageCapture = new ImageCapture.Builder().build();
 
                 initAnalysis();
